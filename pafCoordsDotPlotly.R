@@ -20,9 +20,12 @@ option_list <- list(
   make_option(c("-m", "--min-alignment-length"), type="numeric", default=10000,
               help="filter alignments less than cutoff X bp [default %default]",
               dest="min_align"),
-  make_option(c("-p","--plot-size"), type="numeric", default=15,
-              help="plot size X by X inches [default %default]",
-              dest="plot_size"),
+  make_option(c("-w","--plot-width"), type="numeric", default=170,
+              help="plot width (mm) [default %default]",
+              dest="plot_width"),
+  make_option(c("-p","--plot-height"), type="numeric", default=170,
+              help="plot height (mm) [default %default]",
+              dest="plot_height"),
   make_option(c("-l", "--show-horizontal-lines"), action="store_true", default=FALSE,
               help="turn on horizontal lines on plot for separating scaffolds  [default %default]",
               dest="h_lines"),
@@ -40,7 +43,13 @@ option_list <- list(
               dest="interactive"),
   make_option(c("-r", "--reference-ids"), type="character", default=NULL,
               help="comma-separated list of reference IDs to keep [default %default]",
-              dest="refIDs")
+              dest="refIDs"),
+  make_option(c("-a", "--target-name"), type="character", default="target",
+              help="target name to visualize [default %default]",
+              dest="targetname"),
+  make_option(c("-n", "--query-name"), type="character", default="query",
+              help="query name to visualize [default %default]",
+              dest="queryname")
 )
 
 options(error=traceback)
@@ -62,7 +71,8 @@ if(opt$v){
   cat(paste0("output (-o): ", opt$output_filename,"\n"))
   cat(paste0("minimum query aggregate alignment length (-q): ", opt$min_query_aln,"\n"))
   cat(paste0("minimum alignment length (-m): ", opt$min_align,"\n"))
-  cat(paste0("plot size (-p): ", opt$plot_size,"\n"))
+  cat(paste0("plot width (-w): ", opt$plot_width,"\n"))
+  cat(paste0("plot height (-p): ", opt$plot_height,"\n"))
   cat(paste0("show horizontal lines (-l): ", opt$h_lines,"\n"))
   cat(paste0("number of reference chromosomes to keep (-k): ", opt$keep_ref,"\n"))
   cat(paste0("show % identity (-s): ", opt$similarity,"\n"))
@@ -70,7 +80,7 @@ if(opt$v){
   cat(paste0("produce interactive plot (-x): ", opt$interactive,"\n"))
   cat(paste0("reference IDs to keep (-r): ", opt$refIDs,"\n"))
 }
-opt$output_filename = unlist(strsplit(opt$output_filename, "/"))[length(unlist(strsplit(opt$output_filename, "/")))]
+#opt$output_filename = unlist(strsplit(opt$output_filename, "/"))[length(unlist(strsplit(opt$output_filename, "/")))]
 
 # read in alignments
 alignments = read.table(opt$input_filename, stringsAsFactors = F, fill = T)
@@ -191,6 +201,12 @@ if(opt$on_target & length(levels(alignments$refID)) > 1){
   alignments$percentIDmean = as.numeric(scaffoldIDmean[match(as.character(alignments$queryID), names(scaffoldIDmean))])
 }
 
+# Record
+cat(paste0("Post-filtering number of alignments: ", nrow(alignments),"\n"),
+    paste0("minimum alignment length (-m): ", opt$min_align,"\n"),
+    paste0("Post-filtering number of queries: ", length(unique(alignments$queryID)),"\n"),
+    paste0("minimum query aggregate alignment length (-q): ", opt$min_query_aln, "\n"))
+
 # plot
 yTickMarks = tapply(alignments$queryEnd2, alignments$queryID, max)
 options(warn = -1) # turn off warnings
@@ -226,26 +242,24 @@ if (opt$similarity) {
     scale_x_continuous(breaks = cumsum(as.numeric(chromMax)),
                        labels = levels(alignments$refID)) +
     theme_bw() +
-    theme(text = element_text(size = 8)) +
+    theme(text = element_text(size = 7)) +
     theme(
       panel.grid.major.y = element_blank(),
       panel.grid.minor.y = element_blank(),
       panel.grid.minor.x = element_blank(),
-      axis.text.y = element_text(size = 4, angle = 15)
+      axis.text.y = element_text(size = 7, angle = 15),
+      axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+      #legend.position="bottom",
+      legend.text = element_text(size = 5)
     ) +
     scale_y_continuous(breaks = yTickMarks, labels = substr(levels(alignments$queryID), start = 1, stop = 20)) +
     { if(opt$h_lines){ geom_hline(yintercept = yTickMarks,
                                   color = "grey60",
                                   size = .1) }} +
     scale_color_distiller(palette = "Spectral") +
-    labs(color = "Mean Percent Identity (per query)", 
-         title = paste0(   paste0("Post-filtering number of alignments: ", nrow(alignments),"\t\t\t\t"),
-                           paste0("minimum alignment length (-m): ", opt$min_align,"\n"),
-                           paste0("Post-filtering number of queries: ", length(unique(alignments$queryID)),"\t\t\t\t\t\t\t\t"),
-                           paste0("minimum query aggregate alignment length (-q): ", opt$min_query_aln)
-         )) +
-    xlab("Target") +
-    ylab("Query")
+    labs(color = paste0("Mean Percent Identity", "\n", "(per query)")) +
+    xlab(opt$targetname) +
+    ylab(opt$queryname)
 } else {
   gp = ggplot(alignments) +
     geom_point(mapping = aes(x = refStart2, y = queryStart2),
@@ -271,28 +285,26 @@ if (opt$similarity) {
     scale_x_continuous(breaks = cumsum(chromMax),
                        labels = levels(alignments$refID)) +
     theme_bw() +
-    theme(text = element_text(size = 8)) +
+    theme(text = element_text(size = 7)) +
     theme(
       panel.grid.major.y = element_blank(),
       panel.grid.minor.y = element_blank(),
       panel.grid.minor.x = element_blank(),
-      axis.text.y = element_text(size = 4, angle = 15)
+      axis.text.y = element_text(size = 7, angle = 15),
+      axis.text.x = element_text(size = 7, angle = 45, hjust = 1),
+      #legend.position="bottom",
+      legend.text = element_text(size = 5)
     ) +
     scale_y_continuous(breaks = yTickMarks, labels = substr(levels(alignments$queryID), start = 1, stop = 20)) +
     { if(opt$h_lines){ geom_hline(yintercept = yTickMarks,
                                   color = "grey60",
                                   size = .1) }} +
-    labs(color = "Mean Percent Identity (per query)", 
-         title = paste0(   paste0("Post-filtering number of alignments: ", nrow(alignments),"\t\t\t\t"),
-                           paste0("minimum alignment length (-m): ", opt$min_align,"\n"),
-                           paste0("Post-filtering number of queries: ", length(unique(alignments$queryID)),"\t\t\t\t\t\t\t\t"),
-                           paste0("minimum query aggregate alignment length (-q): ", opt$min_query_aln)
-         )) +
-    xlab("Target") +
-    ylab("Query")
+    labs(color = paste0("Mean Percent Identity", "\n", "(per query)")) +
+    xlab(opt$targetname) +
+    ylab(opt$queryname)
 }
 # gp
-ggsave(filename = paste0(opt$output_filename, ".png"), width = opt$plot_size, height = opt$plot_size, units = "in", dpi = 300, limitsize = F)
+ggsave(filename = paste0(opt$output_filename, ".pdf"), width = opt$plot_width, height = opt$plot_height, units = "mm", dpi = 300, limitsize = F)
 
 if(opt$interactive){
   pdf(NULL)
